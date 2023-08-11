@@ -40,6 +40,8 @@ class CamadaEnlace:
 
 
 class Enlace:
+    datagramaAux = b''
+
     def __init__(self, linha_serial):
         self.linha_serial = linha_serial
         self.linha_serial.registrar_recebedor(self.__raw_recv)
@@ -57,11 +59,41 @@ class Enlace:
         pass
 
     def __raw_recv(self, dados):
-        # TODO: Preencha aqui com o código para receber dados da linha serial.
-        # Trate corretamente as sequências de escape. Quando ler um quadro
-        # completo, repasse o datagrama contido nesse quadro para a camada
-        # superior chamando self.callback. Cuidado pois o argumento dados pode
-        # vir quebrado de várias formas diferentes - por exemplo, podem vir
-        # apenas pedaços de um quadro, ou um pedaço de quadro seguido de um
-        # pedaço de outro, ou vários quadros de uma vez só.
+
+        global datagramaAux
+
+        # caso exista uma parte quebrada anterior
+        datagrama = datagramaAux + dados
+
+        # se houverem dados 
+        if(datagrama != b''):
+            # tratamento do caso de envio da parte final de uma + parte inicial de outra
+            datagrama, frontPart = datagrama.split(b'\xc0')
+            dataSize = len(datagrama)
+            fpSize = len(frontPart)
+
+            # caso tenha terminado, limpa o buffer e deixa a "parte perdida"
+            if datagrama.endswith(b'\xc0'):
+                datagramaAux = b''
+                datagramaAux = frontPart[fpSize-1]
+            # se não, salva no buffer e limpa a "parte perdida"
+            else:
+                datagramaAux = datagrama[dataSize-1]
+            
+            # tratamento das informacoes previamente convertidas
+            datagrama = datagrama.replace(b'\xdb\xdd', b'\xdb')
+            datagrama = datagrama.replace(b'\xdb\xdc', b'\xc0')
+
+            # tratamento final byte a byte
+            for i in dataSize-1:
+                try:
+                    self.callback(datagrama[i])
+                except:
+                    # ignora a exceção, mas mostra na tela
+                    import traceback
+                    traceback.print_exc()
+                finally:
+                    dados = b''
+                    datagrama = b''
+
         pass
