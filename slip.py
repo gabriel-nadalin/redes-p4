@@ -40,6 +40,7 @@ class CamadaEnlace:
 
 
 class Enlace:
+    datagramaAux = b''
 
     def __init__(self, linha_serial):
         self.linha_serial = linha_serial
@@ -59,38 +60,28 @@ class Enlace:
         pass
 
     def __raw_recv(self, dados):
-
-        # inicia os dados com o buffer
+        # caso exista uma parte quebrada anterior
         datagrama = self.datagramaAux + dados
+        self.datagramaAux = b''
 
-        # se houverem dados 
-        if(datagrama != b''):
-            iniLen = len(datagrama)
-            datagrama = datagrama.split(b'\xc0')
-
-            # caso tenha terminado, limpa o buffer
-            if len(datagrama) < iniLen:
-                self.datagramaAux = b''
-
-                # tratamento final byte a byte
-                for i in range(len(datagrama)-1):
-                    # tratamento das informacoes previamente convertidas
-                    datagrama[i] = datagrama[i].replace(b'\xdb\xdd', b'\xdb')
-                    datagrama[i] = datagrama[i].replace(b'\xdb\xdc', b'\xc0')
-
-                    if datagrama[i] != b'':
-                        try:
-                            self.callback(datagrama[i])
-                        except:
-                            # ignora a exceção, mas mostra na tela
-                            import traceback
-                            traceback.print_exc()
-                        finally:
-                            dados = b''
-                            datagrama = b''
-
-            # se não, salva no buffer
-            else:
-                self.datagramaAux = datagrama[len(datagrama)-1]
-
-        pass
+        if datagrama[-1] != b'\xc0':
+            datagramas = datagrama.split(b'\xc0')
+            self.datagramaAux = datagramas[-1]
+            del datagramas[-1]
+        else:
+            datagramas = datagrama.split(b'\xc0')
+            
+        for datagrama in datagramas:
+            # tratamento das informacoes previamente convertidas
+            datagrama = datagrama.replace(b'\xdb\xdd', b'\xdb')
+            datagrama = datagrama.replace(b'\xdb\xdc', b'\xc0')
+            
+            if datagrama != b'':
+                try:
+                    self.callback(datagrama)
+                except:
+                    # ignora a exceção, mas mostra na tela
+                    import traceback
+                    traceback.print_exc()
+                finally:
+                    dados = b''
