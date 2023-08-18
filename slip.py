@@ -45,6 +45,7 @@ class Enlace:
     def __init__(self, linha_serial):
         self.linha_serial = linha_serial
         self.linha_serial.registrar_recebedor(self.__raw_recv)
+        self.datagramaAux = b''
 
     def registrar_recebedor(self, callback):
         self.callback = callback
@@ -60,40 +61,48 @@ class Enlace:
 
     def __raw_recv(self, dados):
 
-        global datagramaAux
 
         # caso exista uma parte quebrada anterior
-        datagrama = datagramaAux + dados
+        datagrama = self.datagramaAux + dados
 
         # se houverem dados 
         if(datagrama != b''):
-            # tratamento do caso de envio da parte final de uma + parte inicial de outra
-            datagrama, frontPart = datagrama.split(b'\xc0')
-            dataSize = len(datagrama)
-            fpSize = len(frontPart)
-
-            # caso tenha terminado, limpa o buffer e deixa a "parte perdida"
-            if datagrama.endswith(b'\xc0'):
-                datagramaAux = b''
-                datagramaAux = frontPart[fpSize-1]
-            # se não, salva no buffer e limpa a "parte perdida"
+            if datagrama[-1] != b'\xc0':
+                datagramas = datagrama.split(b'\xc0')
+                self.datagramaAux = datagramas[-1]
+                del datagramas[-1]
             else:
-                datagramaAux = datagrama[dataSize-1]
+                datagramas = datagrama.split(b'\xc0')
+                
+            for datagrama in datagramas
             
-            # tratamento das informacoes previamente convertidas
-            datagrama = datagrama.replace(b'\xdb\xdd', b'\xdb')
-            datagrama = datagrama.replace(b'\xdb\xdc', b'\xc0')
+            
+            iniLen = len(datagrama)
+            # tratamento do caso de envio da parte final de uma + parte inicial de outra
+            datagrama = datagrama.split(b'\xc0')
 
-            # tratamento final byte a byte
-            for i in dataSize-1:
-                try:
-                    self.callback(datagrama[i])
-                except:
-                    # ignora a exceção, mas mostra na tela
-                    import traceback
-                    traceback.print_exc()
-                finally:
-                    dados = b''
-                    datagrama = b''
+            # caso tenha terminado, limpa o buffer
+            if len(datagrama) < iniLen:
+                self.datagramaAux = b''
+                # tratamento final byte a byte
+                for i in range(len(datagrama)-1):
+                    
+                    # tratamento das informacoes previamente convertidas
+                    datagrama[i] = datagrama[i].replace(b'\xdb\xdd', b'\xdb')
+                    datagrama[i] = datagrama[i].replace(b'\xdb\xdc', b'\xc0')
+                    if datagrama[i] != b'':
+                        try:
+                            self.callback(datagrama[i])
+                        except:
+                            # ignora a exceção, mas mostra na tela
+                            import traceback
+                            traceback.print_exc()
+                        finally:
+                            dados = b''
+                            datagrama = b''
+            # se não, salva no buffer
+            else:
+                self.datagramaAux = datagrama[len(datagrama)-1]
+
 
         pass
