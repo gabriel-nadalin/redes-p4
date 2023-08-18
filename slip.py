@@ -66,16 +66,18 @@ class Enlace:
         datagrama = self.datagramaAux + dados
 
         # se houverem dados 
-        if(datagrama != b''):
-            if datagrama[-1] != b'\xc0':
-                datagramas = datagrama.split(b'\xc0')
-                self.datagramaAux = datagramas[-1]
-                del datagramas[-1]
-            else:
-                datagramas = datagrama.split(b'\xc0')
-                
-            for datagrama in datagramas
+        #if(datagrama != b''):
+        if datagrama[-1] != b'\xc0':
+            datagramas = datagrama.split(b'\xc0')
+            self.datagramaAux = datagramas[-1]
+            del datagramas[-1]
+        else:
+            datagramas = datagrama.split(b'\xc0')
             
+        for datagrama in datagramas:
+            if datagrama != b'':
+                self.callback(datagrama)
+        '''
             
             iniLen = len(datagrama)
             # tratamento do caso de envio da parte final de uma + parte inicial de outra
@@ -106,3 +108,4 @@ class Enlace:
 
 
         pass
+'''
