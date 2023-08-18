@@ -40,7 +40,6 @@ class CamadaEnlace:
 
 
 class Enlace:
-    datagramaAux = b''
 
     def __init__(self, linha_serial):
         self.linha_serial = linha_serial
@@ -61,37 +60,24 @@ class Enlace:
 
     def __raw_recv(self, dados):
 
-
-        # caso exista uma parte quebrada anterior
+        # inicia os dados com o buffer
         datagrama = self.datagramaAux + dados
 
         # se houverem dados 
-        #if(datagrama != b''):
-        if datagrama[-1] != b'\xc0':
-            datagramas = datagrama.split(b'\xc0')
-            self.datagramaAux = datagramas[-1]
-            del datagramas[-1]
-        else:
-            datagramas = datagrama.split(b'\xc0')
-            
-        for datagrama in datagramas:
-            if datagrama != b'':
-                self.callback(datagrama)
-        '''
-            
+        if(datagrama != b''):
             iniLen = len(datagrama)
-            # tratamento do caso de envio da parte final de uma + parte inicial de outra
             datagrama = datagrama.split(b'\xc0')
 
             # caso tenha terminado, limpa o buffer
             if len(datagrama) < iniLen:
                 self.datagramaAux = b''
+
                 # tratamento final byte a byte
                 for i in range(len(datagrama)-1):
-                    
                     # tratamento das informacoes previamente convertidas
                     datagrama[i] = datagrama[i].replace(b'\xdb\xdd', b'\xdb')
                     datagrama[i] = datagrama[i].replace(b'\xdb\xdc', b'\xc0')
+
                     if datagrama[i] != b'':
                         try:
                             self.callback(datagrama[i])
@@ -102,10 +88,9 @@ class Enlace:
                         finally:
                             dados = b''
                             datagrama = b''
+
             # se não, salva no buffer
             else:
                 self.datagramaAux = datagrama[len(datagrama)-1]
 
-
         pass
-'''
